@@ -1,69 +1,108 @@
-from itertools import product
-from multiprocessing import connection
-import os 
+from ast import Pass
+from typing import Optional, Type
+from abc import ABC,abstractmethod
+
 import sqlite3
+import os
+
+from typing import TypeVar
+
+T = TypeVar("T")
 
 
-
-ruta = os.path.dirname(os.path.abspath(__file__))
-db = os.path.join(ruta,"db_sqlite3.db")
-print(db)
-
-# CONECTARNOS
-# nos conectamos y/o creamos el archivo
-conection = sqlite3.connect(db)
-
-# creamos un cursos para movernos en el archivo
-cursor = conection.cursor()
-
-# CREACIÓN DE TABLAS
-crear_tabla = """
-    create table if not exists productos(
-        id integer primary key autoincrement,
-        titulo varchar(100),
-        descripcion text,
-        precio int(100)
-    )
-"""
-
-# ejecutamos una acción con el cursos
-cursor.execute(crear_tabla)
-
-# guardamos los cambios
-conection.commit()
+class User:
+    __name: str
+    __email: str
+    __age: int
+    
+    def __init__(
+        self,
+        host: str,
+        email: str  = None,
+        age: int  = None
+    ):
+        self.__name = host
+        self.__email = email
+        self.__age = age
+    
+    def getName(self)->str:
+        return self.__name
+    
+    def getEmail(self)->str:
+        return self.__email
+    
+    def getAge(self)->str:
+        return self.__age
 
 
-# insertar un registro
-insert_in_table = """
-    insert into productos values (null, "mesa portatil", "mesa para llevar el portatil",2345)
-"""
-cursor.execute(insert_in_table)
-conection.commit()
-
-varios = [
-    ("flores","Flores bonitas",123),
-    ("DarkSouls","Tremendo juego",456),
-    ("camila","mi novia",789)
-]
-
-insertar_registros = """
-    insert into productos values (null,?,?,?)
-"""
-# para ejecutar varios
-cursor.executemany(insertar_registros, varios)
-conection.commit()
+class UserRepository(ABC):
+    @abstractmethod
+    def open(self)->None:
+        pass
+    @abstractmethod
+    def store(self, user:User)->None:
+        pass
+    @abstractmethod
+    def close(self)-> None:
+        pass
 
 
-# listar registros
-listar_registros = "select * from productos"
-productos = cursor.execute(listar_registros).fetchall()
-for producto in productos:
-    print(producto)
+class SqliteDatabase(UserRepository):
+    __host: Optional[str]
+    __username: Optional[str]
+    __password: Optional[str]
+    
+    def __init__(
+        self,
+        host: str,
+        username: Optional[str] = None,
+        password: Optional[str] = None
+    ):
+        self.__host = host
+        self.__username = username
+        self.__password = password
+    def open(self)-> None:
+        conn = sqlite3.connect(self.__host)
+        cursor = conn.cursor()
+        self.conn = conn
+        self.cursor = cursor
+    def store(self, user: User) -> None:
+        insertar = f"""insert into users (name,email,age) values ('{user.getName()}','{user.getEmail()}',{user.getAge()});"""
+        print(insertar)
+        self.cursor.execute(insertar)
+        self.conn.commit()
+    def close(self)->None:
+        self.conn.close()
 
-# un solo registro
-un_registro = "select * from productos"
-un_solo_registro = cursor.execute(un_registro).fetchone()
-print("\n",un_solo_registro)
 
-# cerrar la conexion
-conection.close()
+class MongoDB(UserRepository):
+    def open(self) -> str:
+        print("conectado")
+    
+    def store(self, user: User) -> str:
+        print("guardado")
+    
+    def close(self) -> str:
+        print("cerrado")
+
+class StorageManager:
+    @staticmethod
+    def storageUser(
+        user:T,
+        userRepository: T
+    )-> None:
+        userRepository.open()
+        userRepository.store(user)
+        userRepository.close()
+
+if __name__ == "__main__":
+    ruta = os.path.dirname(os.path.abspath(__file__))
+    db = os.path.join(ruta,"db_sqlite3.db")
+    
+    usuario = User("Sharon","Sharon@correo",21)
+    
+    sqliteDB = SqliteDatabase(db)
+    StorageManager.storageUser(usuario,sqliteDB)
+    
+    mongodb = MongoDB()
+    StorageManager.storageUser(usuario,mongodb)
