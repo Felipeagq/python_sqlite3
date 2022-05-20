@@ -88,8 +88,8 @@ class MongoDB(UserRepository):
 class StorageManager:
     @staticmethod
     def storageUser(
-        user:T,
-        userRepository: T
+        user:User,
+        userRepository: UserRepository
     )-> None:
         userRepository.open()
         userRepository.store(user)
